@@ -15,9 +15,10 @@ Get never modifies your document: it exports a flattened duplicate and a copy of
 
 ## Installation
 
-1. Copy or `git clone` this folder into `ComfyUI/custom_nodes/`. 
-2. Create an exchange folder, e.g. `~/photocraft-bridge` (Windows: `C:\Users\<Profile>\photocraft-bridge`).
-3. Start PhotoCraft with the control channel enabled and both automation roots set to that folder. PhotoCraft creates the token file on first start.
+1. Open a CLI in `ComfyUI/custom_nodes/`.
+2. `git clone https://github.com/the-aSak/ComfyUI-Photocraft-Bridge.git` 
+3. Create an exchange folder, e.g. `~/photocraft-bridge` (or in Windows: `C:\Users\<Profile>\photocraft-bridge`).
+4. Start PhotoCraft with the control channel enabled and both automation roots set to that folder. PhotoCraft creates the token file on first start.
 
    Windows, Command Prompt (`cmd.exe`):
 
@@ -42,8 +43,8 @@ Get never modifies your document: it exports a flattened duplicate and a copy of
    cargo run --release -p photocraft -- --control 7878 --control-token-file ...
    ```
 
-4. If you want to use a different port or folder, edit `config.json` in this folder. `bridge_dir` must be the same folder as the automation roots. `~` stands for your home folder, on Windows too.
-5. Restart ComfyUI. The nodes are in the `Photocraft` category.
+5. If you want to use a different port or folder, edit `config.json` in this folder. `bridge_dir` must be the same folder as the automation roots. `~` stands for your home folder, on Windows too.
+6. Restart ComfyUI. The nodes are in the `Photocraft` category.
 
 ## Usage
 
