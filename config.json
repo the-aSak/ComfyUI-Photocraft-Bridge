@@ -1,0 +1,6 @@
+{
+  "host": "127.0.0.1",
+  "port": 7878,
+  "token_file": "~/photocraft-bridge/control.token",
+  "bridge_dir": "~/photocraft-bridge"
+}
