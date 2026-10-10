@@ -3,14 +3,23 @@
 Pixels travel as PNG files in a shared folder (the control channel caps requests at 1 MiB);
 commands travel as JSON lines over the loopback TCP socket.
 """
+import io
 import json
 import os
+import re
 import socket
 import uuid
 
 import numpy as np
 import torch
 from PIL import Image
+
+try:
+    from PIL import ImageCms
+
+    _SRGB = ImageCms.createProfile("sRGB")
+except ImportError:  # Pillow built without LittleCMS: documents are read without colour management
+    ImageCms = None
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 _LAST_TARGET = {}  # the last Get's target, for a Send whose `target` input is left unconnected
@@ -34,11 +43,16 @@ class Photocraft:
     def __init__(self):
         c = _config()
         self.dir = os.path.expanduser(c["bridge_dir"])
-        with open(os.path.expanduser(c["token_file"]), encoding="utf-8") as f:
-            token = f.read().strip()
+        token_file = os.path.expanduser(c["token_file"])
+        try:
+            with open(token_file, encoding="utf-8") as f:
+                token = f.read().strip()
+        except FileNotFoundError:
+            raise RuntimeError(f"No token file at {token_file}: start PhotoCraft with --control-token-file pointing there, or set token_file in config.json") from None
         try:
             # Loopback only: PhotoCraft listens nowhere else, and the token travels unencrypted.
-            self.sock = socket.create_connection(("127.0.0.1", int(c.get("port", 7878))), timeout=60)
+            # 90 s: longer than PhotoCraft's own 60 s reply deadline, so its error message arrives first.
+            self.sock = socket.create_connection(("127.0.0.1", int(c.get("port", 7878))), timeout=90)
         except OSError as e:
             raise RuntimeError(f"Photocraft is not reachable. Start it with --control {c.get('port', 7878)} ({e})") from e
         self.f = self.sock.makefile("rw", encoding="utf-8", newline="\n")
@@ -70,6 +84,18 @@ class Photocraft:
         finally:
             self.run("file.close", {"document": temp})
             self.run("document.activate", {"document": back_to})
+        if not os.path.exists(self.path(name)):
+            raise RuntimeError(f"PhotoCraft saved {name}, but not into {self.dir}: bridge_dir must be the folder given as --automation-write-root")
+
+    def forget_temp_files(self):
+        """app.open lists each file it opens under File > Open Recent; drop the bridge's temporary ones."""
+        try:
+            recent = self.run("prefs.get", {"path": "fileHandling.recentFiles"}) or []
+            kept = [p for p in recent if not re.fullmatch(r"pcb_[0-9a-f]{12}_out\.png", p)]
+            if kept != recent:
+                self.run("prefs.set", {"path": "fileHandling.recentFiles", "value": kept})
+        except Exception as e:  # runs in a finally: never hide the error that got us here
+            print(f"[Photocraft] could not tidy Open Recent: {e}")
 
     def path(self, name):
         return os.path.join(self.dir, name)
@@ -82,15 +108,31 @@ class Photocraft:
 
 
 def _load_plane(path, mode):
-    """PNG -> float32 HxW(xC) in 0..1, honouring 16-bit files."""
+    """PNG -> float32 HxW(xC) in 0..1, honouring 16-bit files and (for RGB) the embedded colour profile."""
     with Image.open(path) as im:
-        if im.mode not in ("I;16", "I"):  # PIL clips 16-bit grey when converting, so keep it as is
+        icc = im.info.get("icc_profile")
+        if not im.mode.startswith("I"):  # PIL clips 16-bit grey when converting, so keep it as is
             im = im.convert(mode)
+            if mode == "RGB" and icc:
+                im = _to_srgb(im, icc)
         a = np.asarray(im)
     a = a.astype(np.float32) / (255.0 if a.dtype == np.uint8 else 65535.0)
     if mode == "RGB" and a.ndim == 2:
         a = np.repeat(a[..., None], 3, axis=2)
     return a
+
+
+def _to_srgb(im, icc):
+    """Document profile (Adobe RGB, Display P3, ...) -> sRGB, the space models expect. Send's untagged
+    PNG reads back as sRGB, and PhotoCraft converts it into the document's profile again."""
+    if ImageCms is None:
+        print("[Photocraft] Pillow has no ImageCms: colour profile ignored")
+        return im
+    try:
+        return ImageCms.profileToProfile(im, ImageCms.ImageCmsProfile(io.BytesIO(icc)), _SRGB, outputMode="RGB")
+    except (ImageCms.PyCMSError, OSError) as e:
+        print(f"[Photocraft] colour profile ignored: {e}")
+        return im
 
 
 class PhotocraftGetImage:
@@ -124,28 +166,29 @@ class PhotocraftGetImage:
         m = multiple_of
         tag = uuid.uuid4().hex[:12]
         img_name, mask_name = f"pcb_{tag}_image.png", f"pcb_{tag}_mask.png"
-        with Photocraft() as pc:
-            ui = pc.call("ui.inspect")
-            idx = ui["session"]["active"]
-            if idx is None:
-                raise RuntimeError("No document is open in Photocraft")
-            doc = ui["document"]
-            name = ui["session"]["documents"][idx]["name"]
-            # Export a flattened duplicate: app.save on the original would rename it and mark it saved.
-            dup = pc.run("image.duplicate", {"mergedOnly": True, "name": "comfy bridge"})["document"]
-            pc.save_temp_doc(dup, img_name, idx)
-            if doc["hasSelection"]:
-                sel = pc.run("channel.duplicate", {"channel": "selection", "document": "new"})["document"]
-                pc.save_temp_doc(sel, mask_name, idx)
-            files = [pc.path(img_name)] + ([pc.path(mask_name)] if doc["hasSelection"] else [])
-
+        bridge = os.path.expanduser(_config()["bridge_dir"])
+        files = [os.path.join(bridge, img_name), os.path.join(bridge, mask_name)]
         try:
+            with Photocraft() as pc:
+                ui = pc.call("ui.inspect")
+                idx = ui["session"]["active"]
+                if idx is None:
+                    raise RuntimeError("No document is open in Photocraft")
+                doc = ui["document"]
+                name = ui["session"]["documents"][idx]["name"]
+                # Export a flattened duplicate: app.save on the original would rename it and mark it saved.
+                dup = pc.run("image.duplicate", {"mergedOnly": True, "name": "comfy bridge"})["document"]
+                pc.save_temp_doc(dup, img_name, idx)
+                if doc["hasSelection"]:
+                    sel = pc.run("channel.duplicate", {"channel": "selection", "document": "new"})["document"]
+                    pc.save_temp_doc(sel, mask_name, idx)
             image = _load_plane(files[0], "RGB")
             h, w = image.shape[:2]
-            mask = _load_plane(files[1], "L") if len(files) > 1 else np.ones((h, w), np.float32)
+            mask = _load_plane(files[1], "L") if doc["hasSelection"] else np.ones((h, w), np.float32)
         finally:
             for f in files:
-                os.remove(f)
+                if os.path.exists(f):
+                    os.remove(f)
 
         x = y = 0
         bounds = doc.get("selectionBounds")
@@ -153,6 +196,8 @@ class PhotocraftGetImage:
             sx, sy, sw, sh = bounds
             x, y = max(0, sx - padding), max(0, sy - padding)
             x1, y1 = min(w, sx + sw + padding), min(h, sy + sh + padding)
+            if x1 <= x or y1 <= y:  # the selection lies entirely off the canvas
+                raise RuntimeError("The selection lies outside the canvas; nothing to crop to")
             x, x1 = _snap(x, x1, w, m)
             y, y1 = _snap(y, y1, h, m)
             image, mask = image[y:y1, x:x1], mask[y:y1, x:x1]
@@ -162,7 +207,10 @@ class PhotocraftGetImage:
         ph, pw = -(-h // m) * m, -(-w // m) * m
         image = np.pad(image, ((0, ph - h), (0, pw - w), (0, 0)), mode="edge")
         mask = np.pad(mask, ((0, ph - h), (0, pw - w)))
-        target = {"doc": name, "index": idx, "x": x, "y": y, "w": w, "h": h, "pw": pw, "ph": ph}
+        # Layer ids are unique across a PhotoCraft session, so they find the document again even after
+        # Save As renamed it or the tabs were reordered.
+        layers = [layer["id"] for layer in doc["layers"]]
+        target = {"doc": name, "index": idx, "layers": layers, "x": x, "y": y, "w": w, "h": h, "pw": pw, "ph": ph}
         _LAST_TARGET["target"] = target
         # The document's notes (Note tool): never rendered into the image, so a natural prompt field.
         prompt = "\n".join(n["text"] for n in doc.get("notes", []) if n["text"].strip())
@@ -191,6 +239,9 @@ class PhotocraftSendImage:
         }
 
     def send(self, images, layer_name, target=None, mask=None):
+        images = images.float()  # some nodes hand out bf16/fp16, which numpy can't take
+        if mask is not None:
+            mask = (mask[None] if mask.dim() == 2 else mask).float()
         fallback = target is None
         target = target or _LAST_TARGET.get("target")
         if target:
@@ -203,33 +254,37 @@ class PhotocraftSendImage:
             if mask is not None:
                 mask = _resize(mask[..., None], ph, pw)[:, :h, :w, 0]
         with Photocraft() as pc:
-            docs = pc.call("ui.inspect")["session"]
-            dest, x, y = _destination(docs, target, fallback)
-            open_docs = len(docs["documents"])
-            for i, img in enumerate(images):
-                arr = img.cpu().numpy()
-                if mask is not None:
-                    m = mask[min(i, mask.shape[0] - 1)].cpu().numpy()
-                    if m.shape != arr.shape[:2]:
-                        raise ValueError(f"mask {tuple(m.shape)} does not match image {arr.shape[:2]}")
-                    arr = np.dstack([arr[..., :3], m])
-                name = f"pcb_{uuid.uuid4().hex[:12]}_out.png"
-                Image.fromarray((np.clip(arr, 0, 1) * 255).round().astype(np.uint8)).save(pc.path(name))
-                try:
-                    pc.call("app.open", {"path": name})
-                finally:
-                    os.remove(pc.path(name))
-                src = open_docs  # app.open appends the new document at the end
-                if dest is None:  # nothing to put it into: leave it open as its own document
-                    open_docs += 1
-                    continue
-                layer = pc.run("document.inspect", {"document": src})["layers"][0]["id"]
-                copied = pc.run("layer.copyToDocument", {"document": dest, "source": src, "layers": [layer], "offset": [x, y]})
-                for lid in copied["layers"]:
-                    pc.run("layer.setProps", {"layer": lid, "name": layer_name})
-                pc.run("file.close", {"document": src})
-            if dest is not None:
+            try:
+                session = pc.call("ui.inspect")["session"]
+                dest, x, y = _destination(pc, session, target, fallback)
+                for i, img in enumerate(images):
+                    arr = img.cpu().numpy()
+                    alpha = np.ones(arr.shape[:2], np.float32)
+                    if mask is not None:
+                        alpha = mask[min(i, mask.shape[0] - 1)].cpu().numpy()
+                        if alpha.shape != arr.shape[:2]:
+                            raise ValueError(f"mask {tuple(alpha.shape)} does not match image {arr.shape[:2]}")
+                    # Always RGBA: an opaque PNG opens as a Background layer, which loses its name when copied.
+                    arr = np.dstack([arr[..., :3], alpha])
+                    if dest is None:  # no document open: make one the size of the result
+                        dest = pc.run("file.new", {"width": arr.shape[1], "height": arr.shape[0], "background": "transparent"})["document"]
+                    name = f"pcb_{uuid.uuid4().hex[:12]}_out.png"
+                    Image.fromarray((np.clip(arr, 0, 1) * 255).round().astype(np.uint8)).save(pc.path(name))
+                    try:
+                        pc.call("app.open", {"path": name})
+                    finally:
+                        os.remove(pc.path(name))
+                    src = pc.call("ui.inspect")["session"]["active"]
+                    try:
+                        layer = pc.run("document.inspect", {"document": src})["layers"][0]["id"]
+                        if layer_name.strip():  # named here, the copy keeps it: one undo step in the document
+                            pc.run("layer.setProps", {"layer": layer, "name": layer_name})
+                        pc.run("layer.copyToDocument", {"document": dest, "source": src, "layers": [layer], "offset": [x, y]})
+                    finally:
+                        pc.run("file.close", {"document": src})
                 pc.run("document.activate", {"document": dest})
+            finally:
+                pc.forget_temp_files()
         return {}
 
 
@@ -252,19 +307,19 @@ def _resize(t, h, w):
     return out.movedim(1, -1).clamp(0, 1)
 
 
-def _destination(session, target, fallback=False):
+def _destination(pc, session, target, fallback=False):
     """(document index or None, x, y) for the target handed over by PhotocraftGetImage."""
-    docs = session["documents"]
     if target is None:
         return session["active"], 0, 0
-    i = target["index"]
-    if not (i < len(docs) and docs[i]["name"] == target["doc"]):
-        i = next((d["index"] for d in docs if d["name"] == target["doc"]), None)
-        if i is None:
-            if fallback:  # a remembered target whose document was closed: behave as if there were none
-                return session["active"], 0, 0
-            raise RuntimeError(f"Photocraft document \"{target['doc']}\" is no longer open")
-    return i, target["x"], target["y"]
+    wanted = set(target.get("layers", []))
+    n = len(session["documents"])
+    for i in sorted(range(n), key=lambda i: i != target["index"]):  # the remembered index first
+        if wanted & {layer["id"] for layer in pc.run("document.inspect", {"document": i})["layers"]}:
+            return i, target["x"], target["y"]
+    if fallback:  # a remembered target whose document was closed: behave as if there were none
+        print(f"[Photocraft] \"{target['doc']}\" is no longer open; sending to the active document")
+        return session["active"], 0, 0
+    raise RuntimeError(f"Photocraft document \"{target['doc']}\" is no longer open")
 
 
 NODE_CLASS_MAPPINGS = {

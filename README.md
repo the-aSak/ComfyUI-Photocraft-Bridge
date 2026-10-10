@@ -11,7 +11,7 @@ A typical round trip: Draw a selection on an image in PhotoCraft, write a prompt
 
 There is no PhotoCraft plugin. PhotoCraft's plugins are sandboxed WebAssembly filters without network or file access, so they can't talk to ComfyUI. Instead the nodes use PhotoCraft's built-in control channel (see `docs/control-protocol.md` in the PhotoCraft repo): commands go as JSON lines over `127.0.0.1`, pixels go as PNG files through a shared folder.
 
-Get never modifies your document: it exports a flattened duplicate and a copy of the selection, then closes both. Send adds the new layer and its name as two undo steps per image.
+Get never modifies your document: it exports a flattened duplicate and a copy of the selection, then closes both. Send adds one undo step per image (the new layer).
 
 ## Installation
 
@@ -66,11 +66,11 @@ Get re-reads the document on every Queue (no caching), so changes in PhotoCraft 
 
 ## Illustrative examples
 
-![Selection and Prompt via Note in PhotoCraft](https://github.com/the-aSak/ComfyUI-Photocraft-Bridge/blob/main/example_screenshots/photocraft_step_2.png "Selection and Prompt via Note in PhotoCraft")
+![Selection and Prompt via Note in PhotoCraft](example_screenshots/photocraft_step_2.png "Selection and Prompt via Note in PhotoCraft")
 
-![ComfyUI receives the data, works its magic.](https://github.com/the-aSak/ComfyUI-Photocraft-Bridge/blob/main/example_screenshots/comfyui_photocraft_step_2.png "ComfyUI receives the data, works its magic.")
+![ComfyUI receives the data, works its magic.](example_screenshots/comfyui_photocraft_step_2.png "ComfyUI receives the data, works its magic.")
 
-![The result is sent to its own layer in PhotoCraft.](https://github.com/the-aSak/ComfyUI-Photocraft-Bridge/blob/main/example_screenshots/photocraft_step_2_result.png "The result is sent to its own layer in PhotoCraft.")
+![The result is sent to its own layer in PhotoCraft.](example_screenshots/photocraft_step_2_result.png "The result is sent to its own layer in PhotoCraft.")
 
 ### Pixel-exact placement (`multiple_of`, default 16)
 
@@ -80,7 +80,9 @@ If the workflow resizes on its own (e.g. to a fixed megapixel count), Send scale
 
 ### Without `target`
 
-If Send's `target` isn't connected, it uses the target of the last Get run, as long as that document is still open. Otherwise the result goes into the active document at (0, 0), or opens as a new document if none is open.
+If Send's `target` isn't connected, it uses the target of the last Get run, as long as that document is still open. Otherwise the result goes into the active document at (0, 0), or into a new document if none is open. Connecting `target` is still the safer choice: it ties Send to the Get of the same workflow.
+
+Send finds the document by its layers, not its name, so saving it under a new name while the workflow runs is fine.
 
 ## Limits
 
@@ -88,6 +90,7 @@ If Send's `target` isn't connected, it uses the target of the last Get run, as l
 - Images travel as 8-bit PNG. 16-bit documents come back as 8-bit layers.
 - Get exports the visible, flattened composite, not a single layer.
 - PhotoCraft calls itself early alpha; command names may change. Tested against `storytold/photocraft` as of 10 October 2026.
+- Colour profiles: models work in sRGB, so Get converts documents in other profiles (Adobe RGB, Display P3, ...) to sRGB, and PhotoCraft converts the result back into the document's profile. Unchanged pixels survive the round trip; colours outside sRGB can't, so in edited areas they come back clipped to sRGB.
 
 ## Security
 
