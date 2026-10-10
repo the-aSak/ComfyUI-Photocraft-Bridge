@@ -5,7 +5,7 @@ Two ComfyUI nodes that connect a ComfyUI workflow to [PhotoCraft](https://github
 - **Photocraft ▸ Get Image** reads the active PhotoCraft document (flattened), its selection as a `MASK`, the width and height, a `target` (which document, and where) and a `prompt` taken from the document's notes.
 - **Photocraft ◂ Send Image** puts the result back as a new layer in that document, at the right position.
 
-A typical round trip: draw a selection in PhotoCraft, write a prompt into a note, press Queue in ComfyUI, and the inpainted result appears as a layer over the selection.
+A typical round trip: Draw a selection on an image in PhotoCraft, write a prompt into a note, press Queue in ComfyUI, and the inpainted result appears as a layer over the selection.
 
 ## How it works
 
@@ -52,15 +52,17 @@ Get never modifies your document: it exports a flattened duplicate and a copy of
 
 ## Usage
 
-**Whole image** (img2img, upscaling, style transfer): connect Get's `image` to your workflow and its result to Send. Connect Get's `target` to Send. Press Queue; the result appears as a layer named `ComfyUI` above the active layer.
+**Whole image**: Connect Get's `image` to your workflow and its result to Send. Connect Get's `target` to Send. Press Queue; the result appears as a layer named `ComfyUI` above the active layer.
 
 **Inpainting part of the image:** Create a selection in PhotoCraft. In Get, turn on `crop_to_selection` and set `padding` for the context around the selection. Get outputs only that area plus the mask, and `target` remembers where it came from. Connect the `mask` to Send as well, so only the masked part replaces the original: the mask becomes the new layer's alpha.
 
-**Prompt from PhotoCraft:** select the Note tool (in the Eyedropper tool group, right-click the eyedropper icon), click anywhere on the canvas and type the prompt into the Notes panel. Notes are never rendered into the image. Get outputs their text as `prompt`; connect it to your text encoder's `text` input. Several notes are joined line by line, empty ones skipped.
+**Prompt from PhotoCraft:** Prompts can be edited within the workflow or in the style of proprietary software in form of Notes. Select the Note tool (in the Eyedropper tool group, right-click the eyedropper icon), click anywhere on the canvas and type the prompt into the Notes panel. Notes are never rendered into the image. Get outputs their text as `prompt`; connect it to your text encoder's `text` input. Several notes are joined line by line, empty ones skipped.
 
 `width` and `height` are the size of what Get outputs, e.g. for `Empty Latent Image`.
 
 Get re-reads the document on every Queue (no caching), so changes in PhotoCraft are always picked up.
+
+**Run workflow in ComfyUI**.
 
 ### Pixel-exact placement (`multiple_of`, default 16)
 
