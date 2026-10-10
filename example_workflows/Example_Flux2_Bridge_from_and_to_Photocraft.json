@@ -2,7 +2,7 @@
   "id": "94883307-f7a1-4768-bc3a-83d5a9a19a8c",
   "revision": 0,
   "last_node_id": 233,
-  "last_link_id": 491,
+  "last_link_id": 492,
   "nodes": [
     {
       "id": 203,
@@ -94,9 +94,7 @@
         "Node name for S&R": "MaskPreview",
         "cnr_id": "comfy-core",
         "ver": "0.33.0"
-      },
-      "widgets_values": [],
-      "widgets_values_named": {}
+      }
     },
     {
       "id": 214,
@@ -465,12 +463,12 @@
       "id": 227,
       "type": "PhotocraftGetImage",
       "pos": [
-        -414.2898921069462,
-        329.94455711004684
+        -417.0032343921024,
+        266.1812148248907
       ],
       "size": [
         270,
-        206
+        254
       ],
       "flags": {},
       "order": 1,
@@ -491,7 +489,8 @@
           "type": "MASK",
           "links": [
             477,
-            478
+            478,
+            492
           ]
         },
         {
@@ -523,12 +522,16 @@
       "widgets_values": [
         false,
         32,
-        16
+        16,
+        "composite",
+        "queue"
       ],
       "widgets_values_named": {
         "crop_to_selection": false,
         "padding": 32,
-        "multiple_of": 16
+        "multiple_of": 16,
+        "source": "composite",
+        "trigger": "queue"
       },
       "color": "#223",
       "bgcolor": "#335"
@@ -542,7 +545,7 @@
       ],
       "size": [
         270,
-        98
+        122
       ],
       "flags": {},
       "order": 11,
@@ -563,7 +566,7 @@
           "name": "mask",
           "shape": 7,
           "type": "MASK",
-          "link": null
+          "link": 492
         }
       ],
       "outputs": [],
@@ -571,10 +574,12 @@
         "Node name for S&R": "PhotocraftSendImage"
       },
       "widgets_values": [
-        "ComfyUI"
+        "ComfyUI",
+        false
       ],
       "widgets_values_named": {
-        "layer_name": "ComfyUI"
+        "layer_name": "ComfyUI",
+        "layer_mask": false
       },
       "color": "#223",
       "bgcolor": "#335"
@@ -780,9 +785,7 @@
       ],
       "properties": {
         "Node name for S&R": "PreviewImage"
-      },
-      "widgets_values": [],
-      "widgets_values_named": {}
+      }
     }
   ],
   "links": [
@@ -937,6 +940,14 @@
       75,
       6,
       "MASK"
+    ],
+    [
+      492,
+      227,
+      1,
+      228,
+      2,
+      "MASK"
     ]
   ],
   "groups": [],
@@ -948,7 +959,7 @@
         "state": {
           "lastGroupId": 5,
           "lastNodeId": 233,
-          "lastLinkId": 491,
+          "lastLinkId": 492,
           "lastRerouteId": 0
         },
         "revision": 0,
@@ -1335,9 +1346,7 @@
               "secondTabText": "Send Back",
               "secondTabOffset": 80,
               "secondTabWidth": 65
-            },
-            "widgets_values": [],
-            "widgets_values_named": {}
+            }
           },
           {
             "id": 73,
@@ -1495,9 +1504,7 @@
               "Node name for S&R": "PreviewImage",
               "cnr_id": "comfy-core",
               "ver": "0.3.30"
-            },
-            "widgets_values": [],
-            "widgets_values_named": {}
+            }
           },
           {
             "id": 198,
@@ -1578,9 +1585,7 @@
               "Node name for S&R": "PreviewImage",
               "cnr_id": "comfy-core",
               "ver": "0.3.30"
-            },
-            "widgets_values": [],
-            "widgets_values_named": {}
+            }
           },
           {
             "id": 194,
@@ -2690,14 +2695,6 @@
             "type": "MASK"
           },
           {
-            "id": 387,
-            "origin_id": -10,
-            "origin_slot": 8,
-            "target_id": 190,
-            "target_slot": 2,
-            "type": "FLOAT"
-          },
-          {
             "id": 388,
             "origin_id": 197,
             "origin_slot": 0,
@@ -2840,6 +2837,14 @@
             "target_id": -20,
             "target_slot": 3,
             "type": "IMAGE"
+          },
+          {
+            "id": 387,
+            "origin_id": -10,
+            "origin_slot": 8,
+            "target_id": 190,
+            "target_slot": 2,
+            "type": "FLOAT"
           }
         ],
         "extra": {
@@ -2852,7 +2857,7 @@
         "state": {
           "lastGroupId": 5,
           "lastNodeId": 233,
-          "lastLinkId": 491,
+          "lastLinkId": 492,
           "lastRerouteId": 0
         },
         "revision": 0,
@@ -3198,7 +3203,7 @@
         "state": {
           "lastGroupId": 5,
           "lastNodeId": 233,
-          "lastLinkId": 491,
+          "lastLinkId": 492,
           "lastRerouteId": 0
         },
         "revision": 0,
@@ -3537,10 +3542,10 @@
     "VHS_MetadataImage": true,
     "VHS_KeepIntermediate": true,
     "ds": {
-      "scale": 1.1000000000000008,
+      "scale": 0.9090909090909094,
       "offset": [
-        508.16936983830584,
-        180.28891639778348
+        954.6226713479988,
+        294.95515085498005
       ]
     }
   },
