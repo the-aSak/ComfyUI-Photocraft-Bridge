@@ -1,0 +1,14 @@
+[project]
+name = "comfyui-photocraft-bridge"
+description = "Connects ComfyUI to the PhotoCraft image editor: the open document, its selection and a prompt from its notes go into a workflow, the result comes back as a layer. Needs PhotoCraft started with its control channel; the console shows how."
+version = "1.1.0"
+license = { file = "LICENSE" }
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/the-aSak/ComfyUI-Photocraft-Bridge"
+
+[tool.comfy]
+PublisherId = "FILL-IN-YOUR-PUBLISHER-ID"
+DisplayName = "PhotoCraft Bridge"
+# Icon = "https://..."  # optional: SVG, PNG, JPG or GIF, at most 800x400 px
