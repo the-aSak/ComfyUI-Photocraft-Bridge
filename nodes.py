@@ -243,6 +243,9 @@ class PhotocraftGetImage:
                 # "note change": wait until the notes change, then run; a change during a run cancels it.
                 # Meant for the Run button's "Run (Instant)" mode: generate while you type.
                 "trigger": (["queue", "note change"], {"default": "queue"}),
+                # Swap what changes and what stays. In Quick Mask mode PhotoCraft paints in red what is NOT
+                # selected (as Photoshop does): painted the area to change in red? Turn this on.
+                "invert_mask": ("BOOLEAN", {"default": False}),
             },
         }
 
@@ -250,7 +253,7 @@ class PhotocraftGetImage:
     def IS_CHANGED(cls, **_):
         return float("nan")  # always re-read: the document lives outside ComfyUI
 
-    def get(self, crop_to_selection, padding, multiple_of=16, source="composite", trigger="queue"):
+    def get(self, crop_to_selection, padding, multiple_of=16, source="composite", trigger="queue", invert_mask=False):
         m = multiple_of
         tag = uuid.uuid4().hex[:12]
         img_name, mask_name = f"pcb_{tag}_image.png", f"pcb_{tag}_mask.png"
@@ -283,6 +286,8 @@ class PhotocraftGetImage:
             image = _load_plane(files[0], "RGB")
             h, w = image.shape[:2]
             mask = _load_plane(files[1], "L") if channel else np.ones((h, w), np.float32)
+            if invert_mask:
+                mask = 1.0 - mask
         finally:
             for f in files:
                 if os.path.exists(f):
@@ -307,13 +312,15 @@ class PhotocraftGetImage:
         # Layer ids are unique across a PhotoCraft session, so they find the document again even after
         # Save As renamed it or the tabs were reordered.
         layers = [layer["id"] for layer in doc["layers"]]
-        target = {"doc": name, "index": idx, "layers": layers, "x": x, "y": y, "w": w, "h": h, "pw": pw, "ph": ph}
+        mask_t = torch.from_numpy(mask)[None]
+        # The mask rides along, so Send replaces only the selection even when its mask input is left empty.
+        target = {"doc": name, "index": idx, "layers": layers, "x": x, "y": y, "w": w, "h": h, "pw": pw, "ph": ph, "mask": mask_t}
         _LAST_TARGET["target"] = target
         # The document's notes (Note tool): never rendered into the image, so a natural prompt field.
         prompt = _notes_text(doc.get("notes", []))
         if trigger == "note change":
             _cancel_when_notes_change(prompt)
-        return (torch.from_numpy(image)[None], torch.from_numpy(mask)[None], pw, ph, target, prompt)
+        return (torch.from_numpy(image)[None], mask_t, pw, ph, target, prompt)
 
 
 class PhotocraftSendImage:
@@ -346,6 +353,8 @@ class PhotocraftSendImage:
             mask = (mask[None] if mask.dim() == 2 else mask).float()
         fallback = target is None
         target = target or _LAST_TARGET.get("target")
+        if mask is None and target and "mask" in target:
+            mask = target["mask"]  # no mask connected: Get's selection, as Photoshop's Generative Fill does
         if target:
             # Edit models often change the resolution; scale back to what Get handed out, then drop its padding.
             h, w = target["h"], target["w"]

@@ -9,6 +9,6 @@ dependencies = []
 Repository = "https://github.com/the-aSak/ComfyUI-Photocraft-Bridge"
 
 [tool.comfy]
-PublisherId = "the-asak"
-DisplayName = "ComfyUI-PhotoCraft Bridge"
+PublisherId = "FILL-IN-YOUR-PUBLISHER-ID"
+DisplayName = "PhotoCraft Bridge"
 # Icon = "https://..."  # optional: SVG, PNG, JPG or GIF, at most 800x400 px
