@@ -377,15 +377,15 @@
         "Node name for S&R": "PhotocraftGetImage"
       },
       "widgets_values": [
-        false,
-        64,
+        true,
+        32,
         16,
         "composite",
         "queue"
       ],
       "widgets_values_named": {
-        "crop_to_selection": false,
-        "padding": 64,
+        "crop_to_selection": true,
+        "padding": 32,
         "multiple_of": 16,
         "source": "composite",
         "trigger": "queue"
@@ -2221,8 +2221,8 @@
     "ds": {
       "scale": 1.3005326395080765,
       "offset": [
-        136.13046630039034,
-        -1918.3472937312906
+        264.62919497104946,
+        -2230.8217931611343
       ]
     }
   },
