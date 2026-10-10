@@ -20,15 +20,15 @@ Get never modifies your document: it exports a flattened duplicate and a copy of
 3. Create an exchange folder, e.g. `~/photocraft-bridge` (or in Windows: `C:\Users\<Profile>\photocraft-bridge`).
 4. Start PhotoCraft with the control channel enabled and both automation roots set to that folder. PhotoCraft creates the token file on first start.
 
-   Windows, Command Prompt (`cmd.exe`):
+   **Windows, Command Prompt** (`cmd.exe`):
 
    ```bat
    "C:\Program Files\PhotoCraft\photocraft.exe" --control 7878 --control-token-file "%USERPROFILE%\photocraft-bridge\control.token" --automation-read-root "%USERPROFILE%\photocraft-bridge" --automation-write-root "%USERPROFILE%\photocraft-bridge"
    ```
 
-   Windows, PowerShell: the same, but with `$env:USERPROFILE` instead of `%USERPROFILE%`.
+   **Windows, PowerShell**: the same, but with `$env:USERPROFILE` instead of `%USERPROFILE%`.
 
-   Linux / macOS:
+   **Linux / macOS**:
 
    ```sh
    photocraft --control 7878 \
@@ -37,11 +37,9 @@ Get never modifies your document: it exports a flattened duplicate and a copy of
      --automation-write-root ~/photocraft-bridge
    ```
 
-   Running PhotoCraft from source? Put the arguments after `--`, otherwise Cargo tries to read them itself:
+   **Running PhotoCraft from source?** Put the arguments after `--`, otherwise Cargo tries to read them itself:
 
-   ```sh
-   cargo run --release -p photocraft -- --control 7878 --control-token-file ...
-   ```
+   `cargo run --release -p photocraft -- --control 7878 --control-token-file ~/photocraft-bridge/control.token --automation-read-root ~/photocraft-bridge --automation-write-root ~/photocraft-bridge`
 
 5. If you want to use a different port or folder, create a `config.json` in this folder with just the values you change, e.g.:
 
