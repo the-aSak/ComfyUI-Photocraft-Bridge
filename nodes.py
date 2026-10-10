@@ -16,9 +16,16 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 _LAST_TARGET = {}  # the last Get's target, for a Send whose `target` input is left unconnected
 
 
+DEFAULTS = {"port": 7878, "token_file": "~/photocraft-bridge/control.token", "bridge_dir": "~/photocraft-bridge"}
+
+
 def _config():
-    with open(os.path.join(HERE, "config.json"), encoding="utf-8") as f:
-        return json.load(f)
+    """The defaults, overridden by an optional config.json (git-ignored, so updates never touch it)."""
+    path = os.path.join(HERE, "config.json")
+    if not os.path.exists(path):
+        return DEFAULTS
+    with open(path, encoding="utf-8") as f:
+        return {**DEFAULTS, **json.load(f)}
 
 
 class Photocraft:
@@ -30,7 +37,8 @@ class Photocraft:
         with open(os.path.expanduser(c["token_file"]), encoding="utf-8") as f:
             token = f.read().strip()
         try:
-            self.sock = socket.create_connection((c.get("host", "127.0.0.1"), int(c.get("port", 7878))), timeout=60)
+            # Loopback only: PhotoCraft listens nowhere else, and the token travels unencrypted.
+            self.sock = socket.create_connection(("127.0.0.1", int(c.get("port", 7878))), timeout=60)
         except OSError as e:
             raise RuntimeError(f"Photocraft is not reachable. Start it with --control {c.get('port', 7878)} ({e})") from e
         self.f = self.sock.makefile("rw", encoding="utf-8", newline="\n")

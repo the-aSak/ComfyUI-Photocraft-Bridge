@@ -43,7 +43,13 @@ Get never modifies your document: it exports a flattened duplicate and a copy of
    cargo run --release -p photocraft -- --control 7878 --control-token-file ...
    ```
 
-5. If you want to use a different port or folder, edit `config.json` in this folder. `bridge_dir` must be the same folder as the automation roots. `~` stands for your home folder, on Windows too.
+5. If you want to use a different port or folder, create a `config.json` in this folder with just the values you change, e.g.:
+
+   ```json
+   { "port": 7878, "token_file": "~/my-folder/control.token", "bridge_dir": "~/my-folder" }
+   ```
+
+   `bridge_dir` must be the same folder as the automation roots. `~` stands for your home folder, on Windows too. The file is git-ignored, so `git pull` never overwrites it.
 6. Restart ComfyUI. The nodes are in the `Photocraft` category.
 
 ## Usage
@@ -74,7 +80,12 @@ If Send's `target` isn't connected, it uses the target of the last Get run, as l
 - Images travel as 8-bit PNG. 16-bit documents come back as 8-bit layers.
 - Get exports the visible, flattened composite, not a single layer.
 - PhotoCraft calls itself early alpha; command names may change. Tested against `storytold/photocraft` as of 10 October 2026.
-- Anyone with the token can fully control PhotoCraft. Keep the token file private and never expose the port beyond your machine.
+
+## Security
+
+- **The token is not in this repository.** `config.json` only holds the *path* to the token file. PhotoCraft creates that file in your exchange folder, and `.gitignore` excludes `*.token` in case it ever lands here.
+- **Local only.** PhotoCraft binds its control channel to `127.0.0.1` and cannot be reached from other machines. The nodes always connect to `127.0.0.1` as well; there is deliberately no host setting, because the token travels unencrypted.
+- **Anyone who has the token can fully control PhotoCraft** (run any command, read and write files in the exchange folder). Keep the token file private, and don't forward the port or tunnel it to another machine. If you think it leaked, delete the token file and restart PhotoCraft: it creates a new one.
 
 ## Credits and license
 
