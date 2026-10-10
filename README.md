@@ -64,6 +64,14 @@ Get re-reads the document on every Queue (no caching), so changes in PhotoCraft 
 
 **Run workflow in ComfyUI**.
 
+## Illustrative examples
+
+![Selection and Prompt via Note in PhotoCraft](https://github.com/the-aSak/ComfyUI-Photocraft-Bridge/blob/main/example_screenshots/photocraft_step_2.png "Selection and Prompt via Note in PhotoCraft")
+
+![ComfyUI receives the data, works its magic.](https://github.com/the-aSak/ComfyUI-Photocraft-Bridge/blob/main/example_screenshots/comfyui_photocraft_step_2.png "ComfyUI receives the data, works its magic.")
+
+![The result is sent to its own layer in PhotoCraft.](https://github.com/the-aSak/ComfyUI-Photocraft-Bridge/blob/main/example_screenshots/photocraft_step_2_result.png "The result is sent to its own layer in PhotoCraft.")
+
 ### Pixel-exact placement (`multiple_of`, default 16)
 
 `VAE Encode` centre-crops images whose sides aren't multiples of 8, and Flux-type models (Flux, Krea) want multiples of 16. The result would then sit a few pixels off. So Get grows the cropped area to multiples of `multiple_of`, and where that isn't possible (canvas edge, an odd document size) pads right/bottom with edge pixels. Send cuts the padding off again. For SD 1.5 / SDXL, 8 is enough.
