@@ -5,7 +5,7 @@ Two ComfyUI nodes that connect a ComfyUI workflow to [PhotoCraft](https://github
 - **Photocraft ▸ Get Image** reads the active PhotoCraft document (flattened), its selection as a `MASK`, the width and height, a `target` (which document, and where) and a `prompt` taken from the document's notes.
 - **Photocraft ◂ Send Image** puts the result back as a new layer in that document, at the right position.
 
-A typical round trip: Draw a selection on an image in PhotoCraft, write a prompt into a note, press Queue in ComfyUI, and the inpainted result appears as a layer over the selection.
+A typical round trip: Draw a selection on an image in PhotoCraft, write a prompt into a note, press Queue in ComfyUI, and the inpainted result appears as a layer over the selection. It should be compatible with all models; Flux.2 Klein 4B and 9B, Krea2, Qwen 2.1 Image Edit have been tested. See example workflows.
 
 ## How it works
 
@@ -70,13 +70,8 @@ Get re-reads the document on every Queue (no caching), so changes in PhotoCraft 
 
 **Run workflow in ComfyUI**.
 
-## Illustrative examples
-
-![Selection and Prompt via Note in PhotoCraft](example_screenshots/photocraft_step_2.png "Selection and Prompt via Note in PhotoCraft")
-
-![ComfyUI receives the data, works its magic.](example_screenshots/comfyui_photocraft_step_2.png "ComfyUI receives the data, works its magic.")
-
-![The result is sent to its own layer in PhotoCraft.](example_screenshots/photocraft_step_2_result.png "The result is sent to its own layer in PhotoCraft.")
+## Screenshots
+![Selection and Prompt via Note in PhotoCraft](example_screenshots/example-flux2-klein-image-edit.png "Flux.2 Klein 4B Image Edit, selection and prompt via Note in PhotoCraft.")
 
 ### Pixel-exact placement (`multiple_of`, default 16)
 
