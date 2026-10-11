@@ -70,7 +70,7 @@ Get re-reads the document on every Queue (no caching), so changes in PhotoCraft 
 
 **Run workflow in ComfyUI**.
 
-## Screenshots
+### Screenshots ###
 ![Selection and Prompt via Note in PhotoCraft](example_screenshots/example-flux2-klein-image-edit.png "Flux.2 Klein 4B Image Edit, selection and prompt via Note in PhotoCraft.")
 
 ### Pixel-exact placement (`multiple_of`, default 16)
