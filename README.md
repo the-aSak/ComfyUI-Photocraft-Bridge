@@ -1,15 +1,15 @@
 # ComfyUI ⇄ PhotoCraft Bridge
 
-Two ComfyUI nodes that connect a ComfyUI workflow to [PhotoCraft](https://github.com/storytold/photocraft), the open-source Photoshop reimplementation in Rust. They work like a subgraph's input and output:
+Two ComfyUI nodes that connect a ComfyUI workflow to [PhotoCraft](https://github.com/storytold/photocraft). They work like a subgraph's input and output:
 
-- **Photocraft ▸ Get Image** reads the active PhotoCraft document (flattened), its selection as a `MASK`, the width and height, a `target` (which document, and where) and a `prompt` taken from the document's notes.
+- **Photocraft ▸ Get Image** reads the active PhotoCraft document (flattened or the active layer), its selection as a `MASK`, the width and height, a `target` (which document, and where) and a `prompt` taken from the document's notes.
 - **Photocraft ◂ Send Image** puts the result back as a new layer in that document, at the right position.
 
-A typical round trip: Draw a selection on an image in PhotoCraft, write a prompt into a note, press Queue in ComfyUI, and the inpainted result appears as a layer over the selection. It should be compatible with all models; Flux.2 Klein 4B and 9B, Krea2, Qwen 2.1 Image Edit have been tested. See example workflows.
+A typical round trip: Draw a selection on an image in PhotoCraft, write a prompt into a note, and the inpainted result appears as a layer over the selection. It should be compatible with all models; Flux.2 Klein 4B and 9B, Krea2, Qwen 2.1 Image Edit have been tested. See example workflows.
 
 ## How it works
 
-There is no PhotoCraft plugin. PhotoCraft's plugins are sandboxed WebAssembly filters without network or file access, so they can't talk to ComfyUI. Instead the nodes use PhotoCraft's built-in control channel (see `docs/control-protocol.md` in the PhotoCraft repo): commands go as JSON lines over `127.0.0.1`, pixels go as PNG files through a shared folder.
+There is no PhotoCraft plugin. PhotoCraft's plugins are sandboxed WebAssembly filters without network or file access, so they can't talk to ComfyUI. To do so, it uses PhotoCraft's built-in control channel (see `docs/control-protocol.md` in the PhotoCraft repo): commands go as JSON lines over `127.0.0.1`, pixels go as PNG files through a shared folder.
 
 Get never modifies your document: it exports a flattened duplicate and a copy of the selection, then closes both. Send adds one undo step per image (the new layer).
 
@@ -60,7 +60,7 @@ Get never modifies your document: it exports a flattened duplicate and a copy of
 
 **Only the active layer:** set Get's `source` to `active layer` to send just that layer instead of the visible composite. Its transparent areas become white.
 
-**Prompt from PhotoCraft:** Prompts can be edited within the workflow or in the style of proprietary software in form of Notes. Select the Note tool (in the Eyedropper tool group, right-click the eyedropper icon), click anywhere on the canvas and type the prompt into the Notes panel. Notes are never rendered into the image. Get outputs their text as `prompt`; connect it to your text encoder's `text` input. Several notes are joined line by line, empty ones skipped.
+**Prompt from PhotoCraft:** Prompts can be edited within the workflow and in form of Notes within Photocraft. Select the Note tool (in the Eyedropper tool group, right-click the eyedropper icon), click anywhere on the canvas and type the prompt into the Notes panel. Notes are never rendered into the image. Get outputs their text as `prompt`; connect it to your text encoder's `text` input. Several notes are joined line by line, empty ones skipped. I recommend concatenating two text inputs, one from Photocraft and one in ComfyUI as in the example workflows.
 
 **Generate while you type:** set Get's `trigger` to `note change` and switch ComfyUI's Run button to **Run (Instant)** (the arrow next to Run), then click Run once to start it: the button now reads "Stop Run (Instant)", and the console says the bridge is waiting for the notes. ("Run (On Change)" won't do: it only reacts to changes in the workflow, not in PhotoCraft.) Each run then waits until the notes in PhotoCraft have changed and rested for two seconds, and generates with the new text. Typing again while a generation runs cancels it, so the newest prompt wins and only one generation ever runs at a time. A run with unchanged notes just waits, and an empty note never starts one. To stop, click the Run button again ("Stop Run (Instant)"), then cancel the waiting run.
 
